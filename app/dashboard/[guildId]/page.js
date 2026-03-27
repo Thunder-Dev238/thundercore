@@ -558,14 +558,36 @@ export default function GuildDashboard() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-white">Banned Words</Label>
-                    <p className="text-xs text-muted-foreground">Comma-separated list of banned words</p>
-                    <Textarea
-                      value={(autoMod.bannedWords || []).join(', ')}
-                      onChange={(e) => updateAutoMod('bannedWords', e.target.value.split(',').map(w => w.trim()).filter(Boolean))}
-                      className="bg-white/5 border-white/10 text-white min-h-[80px]"
-                      placeholder="word1, word2, word3..."
-                    />
+                    <Label className="text-white font-bold italic">Banned / Flagged Words</Label>
+                    <p className="text-xs text-muted-foreground">Type a word and press Space or Enter to add it</p>
+                    <div className="flex flex-wrap gap-2 p-3 rounded-lg bg-white/5 border border-white/10 min-h-[80px]">
+                      {(autoMod.bannedWords || []).map((word, idx) => (
+                        <span key={idx} className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-red-500/20 text-red-400 text-sm font-medium border border-red-500/30">
+                          {word}
+                          <button
+                            onClick={() => updateAutoMod('bannedWords', (autoMod.bannedWords || []).filter((_, i) => i !== idx))}
+                            className="ml-1 text-red-400/60 hover:text-red-300"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </span>
+                      ))}
+                      <input
+                        type="text"
+                        className="flex-1 min-w-[120px] bg-transparent border-none outline-none text-white text-sm placeholder:text-muted-foreground"
+                        placeholder="Type a word and press Space or Enter..."
+                        onKeyDown={(e) => {
+                          if (e.key === ' ' || e.key === 'Enter') {
+                            e.preventDefault()
+                            const word = e.target.value.trim()
+                            if (word && !(autoMod.bannedWords || []).includes(word)) {
+                              updateAutoMod('bannedWords', [...(autoMod.bannedWords || []), word])
+                            }
+                            e.target.value = ''
+                          }
+                        }}
+                      />
+                    </div>
                   </div>
                 </CardContent>
               </Card>
