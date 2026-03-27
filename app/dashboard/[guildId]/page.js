@@ -18,7 +18,7 @@ import {
   Shield, Brain, Zap, Eye, Gavel, ScrollText, Settings, Terminal,
   ArrowLeft, RefreshCw, Save, CheckCircle, LogOut, ChevronRight,
   AlertTriangle, Lock, Users, MessageSquare, Hash, Trash2, Check, X,
-  Home, Bot
+  Home, Bot, Gift, Clock, Plus, Trophy
 } from 'lucide-react'
 
 const TABS = [
@@ -30,6 +30,7 @@ const TABS = [
   { id: 'logging', label: 'Logging', icon: Eye },
   { id: 'raidmode', label: 'Raid Protection', icon: AlertTriangle },
   { id: 'appeals', label: 'Appeals', icon: ScrollText },
+  { id: 'giveaway', label: 'Giveaways', icon: Gift },
   { id: 'commands', label: 'Commands', icon: Terminal },
   { id: 'settings', label: 'Settings', icon: Settings },
 ]
@@ -66,6 +67,9 @@ export default function GuildDashboard() {
   const [commands, setCommands] = useState({})
   const [prefix, setPrefix] = useState('t!')
   const [security, setSecurity] = useState({ whitelist: [], trusted: [] })
+  const [giveawayConfig, setGiveawayConfig] = useState({})
+  const [giveaways, setGiveaways] = useState([])
+  const [newGiveaway, setNewGiveaway] = useState({ prize: '', description: '', channelId: '', winnersCount: 1, duration: 86400000 })
 
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/')
@@ -75,13 +79,14 @@ export default function GuildDashboard() {
     if (!guildId || !session) return
     setLoading(true)
     try {
-      const [settingsRes, cmdsRes, appealsRes, casesRes, channelsRes, rolesRes] = await Promise.all([
+      const [settingsRes, cmdsRes, appealsRes, casesRes, channelsRes, rolesRes, giveawaysRes] = await Promise.all([
         fetch(`/api/guilds/${guildId}`),
         fetch(`/api/guilds/${guildId}/commands`),
         fetch(`/api/guilds/${guildId}/appeals`),
         fetch(`/api/guilds/${guildId}/cases`),
         fetch(`/api/guilds/${guildId}/channels`),
         fetch(`/api/guilds/${guildId}/roles`),
+        fetch(`/api/guilds/${guildId}/giveaways`),
       ])
 
       if (settingsRes.ok) {
@@ -94,6 +99,7 @@ export default function GuildDashboard() {
         setLogs(s.logs || {})
         setRaidMode(s.raidMode || {})
         setAppealsConfig(s.appeals || {})
+        setGiveawayConfig(s.giveaway || {})
         setPrefix(s.prefix || 't!')
         setSecurity(s.security || { whitelist: [], trusted: [] })
       }
@@ -106,6 +112,7 @@ export default function GuildDashboard() {
       if (casesRes.ok) setCases(await casesRes.json())
       if (channelsRes.ok) setChannels(await channelsRes.json())
       if (rolesRes.ok) setRoles(await rolesRes.json())
+      if (giveawaysRes.ok) setGiveaways(await giveawaysRes.json())
     } catch (err) {
       console.error('Failed to fetch data:', err)
     }
@@ -122,7 +129,7 @@ export default function GuildDashboard() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           moderation, autoMod, antiNuke, aiMod, logs, raidMode,
-          appeals: appealsConfig, prefix, security, commands,
+          appeals: appealsConfig, giveaway: giveawayConfig, prefix, security, commands,
         }),
       })
       if (res.ok) {
@@ -179,6 +186,49 @@ export default function GuildDashboard() {
   const updateAppealsConfig = (key, value) => {
     setAppealsConfig(prev => ({ ...prev, [key]: value }))
     markChanged()
+  }
+
+  const updateGiveawayConfig = (key, value) => {
+    setGiveawayConfig(prev => ({ ...prev, [key]: value }))
+    markChanged()
+  }
+
+  const createGiveaway = async () => {
+    if (!newGiveaway.prize || !newGiveaway.channelId) return
+    try {
+      const res = await fetch(`/api/guilds/${guildId}/giveaways`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newGiveaway),
+      })
+      if (res.ok) {
+        setNewGiveaway({ prize: '', description: '', channelId: '', winnersCount: 1, duration: 86400000 })
+        fetchData()
+      }
+    } catch (err) {
+      console.error('Failed to create giveaway:', err)
+    }
+  }
+
+  const endGiveaway = async (giveawayId) => {
+    try {
+      await fetch(`/api/guilds/${guildId}/giveaways/${giveawayId}/end`, { method: 'PUT' })
+      fetchData()
+    } catch (err) { console.error(err) }
+  }
+
+  const rerollGiveaway = async (giveawayId) => {
+    try {
+      await fetch(`/api/guilds/${guildId}/giveaways/${giveawayId}/reroll`, { method: 'PUT' })
+      fetchData()
+    } catch (err) { console.error(err) }
+  }
+
+  const deleteGiveaway = async (giveawayId) => {
+    try {
+      await fetch(`/api/guilds/${guildId}/giveaways/${giveawayId}`, { method: 'DELETE' })
+      fetchData()
+    } catch (err) { console.error(err) }
   }
 
   const toggleCommand = (category, cmdName) => {
@@ -315,6 +365,7 @@ export default function GuildDashboard() {
                   { label: 'Anti-Nuke', enabled: antiNuke.enabled, icon: Shield, color: 'amber' },
                   { label: 'AI Moderation', enabled: aiMod.enabled, icon: Brain, color: 'red' },
                   { label: 'Raid Protection', enabled: raidMode.enabled, icon: AlertTriangle, color: 'amber' },
+                  { label: 'Giveaways', enabled: giveawayConfig.enabled, icon: Gift, color: 'amber' },
                 ].map((item, i) => (
                   <Card key={i} className="glass-card border-white/5">
                     <CardContent className="p-5">
@@ -499,6 +550,101 @@ export default function GuildDashboard() {
                       </Select>
                     </div>
                   </div>
+                </CardContent>
+              </Card>
+
+              {/* Timeout Escalation */}
+              <Card className="glass-card border-white/5">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-white flex items-center gap-2">
+                        <Clock className="w-5 h-5 text-amber-500" /> Timeout Escalation
+                      </CardTitle>
+                      <CardDescription>Progressive timeouts based on warning count</CardDescription>
+                    </div>
+                    <Switch
+                      checked={moderation.timeoutEscalation || false}
+                      onCheckedChange={(v) => updateModeration('timeoutEscalation', v)}
+                    />
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <p className="text-xs text-muted-foreground">
+                    When enabled, timeout duration increases with each warning. Configure the duration for each warning level below.
+                  </p>
+                  {(moderation.timeoutSteps || [
+                    { warns: 1, duration: 300000 },
+                    { warns: 2, duration: 3600000 },
+                    { warns: 3, duration: 86400000 },
+                  ]).map((step, idx) => (
+                    <div key={idx} className="flex items-center gap-4 p-4 rounded-lg bg-white/5">
+                      <div className="flex items-center gap-2 min-w-[120px]">
+                        <Badge className="bg-red-500/10 text-red-400 border-red-500/20">
+                          Warning {step.warns}
+                        </Badge>
+                      </div>
+                      <div className="flex-1 flex items-center gap-2">
+                        <Clock className="w-4 h-4 text-muted-foreground" />
+                        <Select
+                          value={String(step.duration)}
+                          onValueChange={(v) => {
+                            const steps = [...(moderation.timeoutSteps || [
+                              { warns: 1, duration: 300000 },
+                              { warns: 2, duration: 3600000 },
+                              { warns: 3, duration: 86400000 },
+                            ])]
+                            steps[idx] = { ...steps[idx], duration: parseInt(v) }
+                            updateModeration('timeoutSteps', steps)
+                          }}
+                        >
+                          <SelectTrigger className="bg-white/5 border-white/10 text-white">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="bg-[#1a1a2e] border-white/10">
+                            <SelectItem value="60000">1 minute</SelectItem>
+                            <SelectItem value="300000">5 minutes</SelectItem>
+                            <SelectItem value="600000">10 minutes</SelectItem>
+                            <SelectItem value="1800000">30 minutes</SelectItem>
+                            <SelectItem value="3600000">1 hour</SelectItem>
+                            <SelectItem value="21600000">6 hours</SelectItem>
+                            <SelectItem value="43200000">12 hours</SelectItem>
+                            <SelectItem value="86400000">1 day</SelectItem>
+                            <SelectItem value="604800000">7 days</SelectItem>
+                            <SelectItem value="2419200000">28 days</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      {idx >= 3 && (
+                        <Button
+                          variant="ghost" size="sm"
+                          className="text-red-400 hover:bg-red-500/10"
+                          onClick={() => {
+                            const steps = [...(moderation.timeoutSteps || [])]
+                            steps.splice(idx, 1)
+                            updateModeration('timeoutSteps', steps)
+                          }}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                  <Button
+                    variant="outline" size="sm"
+                    className="border-amber-500/30 text-amber-400 hover:bg-amber-500/10"
+                    onClick={() => {
+                      const steps = [...(moderation.timeoutSteps || [
+                        { warns: 1, duration: 300000 },
+                        { warns: 2, duration: 3600000 },
+                        { warns: 3, duration: 86400000 },
+                      ])]
+                      steps.push({ warns: steps.length + 1, duration: 86400000 })
+                      updateModeration('timeoutSteps', steps)
+                    }}
+                  >
+                    <Plus className="w-4 h-4 mr-2" /> Add Escalation Step
+                  </Button>
                 </CardContent>
               </Card>
             </div>
@@ -974,6 +1120,227 @@ export default function GuildDashboard() {
                     </div>
                   ) : (
                     <p className="text-muted-foreground text-sm">No appeals submitted yet.</p>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* Giveaway Tab */}
+          {activeTab === 'giveaway' && (
+            <div className="space-y-6">
+              {/* Giveaway Settings */}
+              <Card className="glass-card border-white/5">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-white flex items-center gap-2">
+                        <Gift className="w-5 h-5 text-amber-500" /> Giveaway System
+                      </CardTitle>
+                      <CardDescription>Configure and manage server giveaways</CardDescription>
+                    </div>
+                    <Switch checked={giveawayConfig.enabled || false} onCheckedChange={(v) => updateGiveawayConfig('enabled', v)} />
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <Label className="text-white">Default Duration</Label>
+                      <Select
+                        value={String(giveawayConfig.defaultDuration || 86400000)}
+                        onValueChange={(v) => updateGiveawayConfig('defaultDuration', parseInt(v))}
+                      >
+                        <SelectTrigger className="bg-white/5 border-white/10 text-white">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-[#1a1a2e] border-white/10">
+                          <SelectItem value="3600000">1 hour</SelectItem>
+                          <SelectItem value="21600000">6 hours</SelectItem>
+                          <SelectItem value="43200000">12 hours</SelectItem>
+                          <SelectItem value="86400000">1 day</SelectItem>
+                          <SelectItem value="259200000">3 days</SelectItem>
+                          <SelectItem value="604800000">7 days</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-white">Max Winners</Label>
+                      <Input
+                        type="number"
+                        value={giveawayConfig.maxWinners || 10}
+                        onChange={(e) => updateGiveawayConfig('maxWinners', parseInt(e.target.value) || 10)}
+                        className="bg-white/5 border-white/10 text-white"
+                        min={1} max={50}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-white">Log Channel</Label>
+                      <Select
+                        value={giveawayConfig.logChannel || 'none'}
+                        onValueChange={(v) => updateGiveawayConfig('logChannel', v === 'none' ? null : v)}
+                      >
+                        <SelectTrigger className="bg-white/5 border-white/10 text-white">
+                          <SelectValue placeholder="Select channel" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-[#1a1a2e] border-white/10">
+                          <SelectItem value="none">None</SelectItem>
+                          {channels.map(c => (
+                            <SelectItem key={c.id} value={c.id}>#{c.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between p-4 rounded-lg bg-white/5">
+                    <div>
+                      <p className="text-sm font-medium text-white">DM Winners</p>
+                      <p className="text-xs text-muted-foreground">Send a DM to winners when they win</p>
+                    </div>
+                    <Switch checked={giveawayConfig.dmWinners ?? true} onCheckedChange={(v) => updateGiveawayConfig('dmWinners', v)} />
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Create Giveaway */}
+              <Card className="glass-card border-white/5 border-amber-500/20">
+                <CardHeader>
+                  <CardTitle className="text-white flex items-center gap-2">
+                    <Plus className="w-5 h-5 text-amber-500" /> Create Giveaway
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-white">Prize *</Label>
+                      <Input
+                        value={newGiveaway.prize}
+                        onChange={(e) => setNewGiveaway(prev => ({ ...prev, prize: e.target.value }))}
+                        className="bg-white/5 border-white/10 text-white"
+                        placeholder="e.g. Nitro Classic"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-white">Channel *</Label>
+                      <Select
+                        value={newGiveaway.channelId || ''}
+                        onValueChange={(v) => setNewGiveaway(prev => ({ ...prev, channelId: v }))}
+                      >
+                        <SelectTrigger className="bg-white/5 border-white/10 text-white">
+                          <SelectValue placeholder="Select channel" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-[#1a1a2e] border-white/10">
+                          {channels.map(c => (
+                            <SelectItem key={c.id} value={c.id}>#{c.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-white">Winners</Label>
+                      <Input
+                        type="number"
+                        value={newGiveaway.winnersCount}
+                        onChange={(e) => setNewGiveaway(prev => ({ ...prev, winnersCount: parseInt(e.target.value) || 1 }))}
+                        className="bg-white/5 border-white/10 text-white"
+                        min={1} max={50}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-white">Duration</Label>
+                      <Select
+                        value={String(newGiveaway.duration)}
+                        onValueChange={(v) => setNewGiveaway(prev => ({ ...prev, duration: parseInt(v) }))}
+                      >
+                        <SelectTrigger className="bg-white/5 border-white/10 text-white">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-[#1a1a2e] border-white/10">
+                          <SelectItem value="3600000">1 hour</SelectItem>
+                          <SelectItem value="21600000">6 hours</SelectItem>
+                          <SelectItem value="43200000">12 hours</SelectItem>
+                          <SelectItem value="86400000">1 day</SelectItem>
+                          <SelectItem value="259200000">3 days</SelectItem>
+                          <SelectItem value="604800000">7 days</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-white">Description</Label>
+                    <Textarea
+                      value={newGiveaway.description}
+                      onChange={(e) => setNewGiveaway(prev => ({ ...prev, description: e.target.value }))}
+                      className="bg-white/5 border-white/10 text-white min-h-[60px]"
+                      placeholder="Optional description..."
+                    />
+                  </div>
+                  <Button
+                    onClick={createGiveaway}
+                    disabled={!newGiveaway.prize || !newGiveaway.channelId}
+                    className="bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white neon-glow-gold"
+                  >
+                    <Gift className="w-4 h-4 mr-2" /> Create Giveaway
+                  </Button>
+                </CardContent>
+              </Card>
+
+              {/* Active Giveaways */}
+              <Card className="glass-card border-white/5">
+                <CardHeader>
+                  <CardTitle className="text-white flex items-center gap-2">
+                    <Trophy className="w-5 h-5 text-amber-500" /> Giveaways ({giveaways.length})
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {giveaways.length > 0 ? (
+                    <div className="space-y-3">
+                      {giveaways.map((gw, i) => (
+                        <div key={i} className="p-4 rounded-lg bg-white/5 space-y-3">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <h4 className="text-white font-semibold flex items-center gap-2">
+                                <Gift className="w-4 h-4 text-amber-500" /> {gw.prize}
+                              </h4>
+                              {gw.description && <p className="text-xs text-muted-foreground mt-1">{gw.description}</p>}
+                            </div>
+                            <Badge className={
+                              gw.status === 'active' ? 'bg-green-500/10 text-green-400 border-green-500/20' :
+                              'bg-white/5 text-muted-foreground border-white/10'
+                            }>
+                              {gw.status}
+                            </Badge>
+                          </div>
+                          <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                            <span>{gw.winnersCount} winner(s)</span>
+                            <span>Ends: {new Date(gw.endsAt).toLocaleString()}</span>
+                            <span>{gw.entries?.length || 0} entries</span>
+                          </div>
+                          <div className="flex gap-2">
+                            {gw.status === 'active' && (
+                              <Button size="sm" variant="ghost" className="text-red-400 hover:bg-red-500/10 h-7 text-xs"
+                                onClick={() => endGiveaway(gw.id)}>
+                                <X className="w-3 h-3 mr-1" /> End
+                              </Button>
+                            )}
+                            {gw.status === 'ended' && (
+                              <Button size="sm" variant="ghost" className="text-amber-400 hover:bg-amber-500/10 h-7 text-xs"
+                                onClick={() => rerollGiveaway(gw.id)}>
+                                <RefreshCw className="w-3 h-3 mr-1" /> Reroll
+                              </Button>
+                            )}
+                            <Button size="sm" variant="ghost" className="text-muted-foreground hover:bg-white/5 h-7 text-xs"
+                              onClick={() => deleteGiveaway(gw.id)}>
+                              <Trash2 className="w-3 h-3 mr-1" /> Delete
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <Gift className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
+                      <p className="text-muted-foreground text-sm">No giveaways yet. Create one above!</p>
+                    </div>
                   )}
                 </CardContent>
               </Card>

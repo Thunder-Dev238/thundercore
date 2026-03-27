@@ -15,6 +15,20 @@ const DEFAULT_GUILD_SETTINGS = {
   moderation: {
     muteRole: null, jailRole: null, jailChannel: null,
     warnLimit: 3, warnPunishment: 'kick', timeoutDuration: 3600000,
+    timeoutEscalation: false,
+    timeoutSteps: [
+      { warns: 1, duration: 300000 },
+      { warns: 2, duration: 3600000 },
+      { warns: 3, duration: 86400000 },
+    ],
+  },
+  giveaway: {
+    enabled: false,
+    managerRoles: [],
+    defaultDuration: 86400000,
+    maxWinners: 10,
+    dmWinners: true,
+    logChannel: null,
   },
   antiNuke: {
     enabled: false, sensitivity: 'medium', whitelist: [],
@@ -358,6 +372,7 @@ async function handleRoute(request, { params }) {
         if (body.logs) updateFields.logs = body.logs
         if (body.raidMode) updateFields.raidMode = body.raidMode
         if (body.appeals) updateFields.appeals = body.appeals
+        if (body.giveaway) updateFields.giveaway = body.giveaway
         if (body.prefix !== undefined) updateFields.prefix = body.prefix
         if (body.security) updateFields.security = body.security
 
@@ -377,6 +392,74 @@ async function handleRoute(request, { params }) {
         }
 
         return cors(NextResponse.json({ success: true, message: 'All settings applied successfully' }))
+      }
+
+      // PUT update giveaway settings
+      if (subRoute === '/giveaway-config' && method === 'PUT') {
+        const body = await request.json()
+        await db.collection('guilds').updateOne(
+          { guildId },
+          { $set: { giveaway: body, updatedAt: new Date() } },
+          { upsert: true }
+        )
+        return cors(NextResponse.json({ success: true }))
+      }
+
+      // GET giveaways list
+      if (subRoute === '/giveaways' && method === 'GET') {
+        const giveaways = await db.collection('giveaways').find({ guildId }).sort({ createdAt: -1 }).limit(50).toArray()
+        return cors(NextResponse.json(giveaways))
+      }
+
+      // POST create giveaway
+      if (subRoute === '/giveaways' && method === 'POST') {
+        const body = await request.json()
+        const { v4: uuidv4 } = await import('uuid')
+        const giveaway = {
+          id: uuidv4(),
+          guildId,
+          channelId: body.channelId,
+          prize: body.prize,
+          description: body.description || '',
+          winnersCount: body.winnersCount || 1,
+          duration: body.duration || 86400000,
+          endsAt: new Date(Date.now() + (body.duration || 86400000)),
+          hostId: session.user.discordId || 'dashboard',
+          requirements: body.requirements || {},
+          status: 'active',
+          winners: [],
+          entries: [],
+          createdAt: new Date(),
+        }
+        await db.collection('giveaways').insertOne(giveaway)
+        return cors(NextResponse.json({ success: true, giveaway }))
+      }
+
+      // PUT end/reroll giveaway
+      const giveawayActionMatch = subRoute.match(/^\/giveaways\/(.+)\/(end|reroll)$/)
+      if (giveawayActionMatch && method === 'PUT') {
+        const giveawayId = giveawayActionMatch[1]
+        const action = giveawayActionMatch[2]
+        if (action === 'end') {
+          await db.collection('giveaways').updateOne(
+            { id: giveawayId, guildId },
+            { $set: { status: 'ended', endedAt: new Date() } }
+          )
+        } else if (action === 'reroll') {
+          await db.collection('giveaways').updateOne(
+            { id: giveawayId, guildId },
+            { $set: { status: 'active', winners: [], endedAt: null } }
+          )
+        }
+        return cors(NextResponse.json({ success: true }))
+      }
+
+      // DELETE giveaway
+      const giveawayDeleteMatch = subRoute.match(/^\/giveaways\/(.+)$/)
+      if (giveawayDeleteMatch && method === 'DELETE') {
+        const giveawayId = giveawayDeleteMatch[1]
+        await db.collection('giveaways').deleteOne({ id: giveawayId, guildId })
+        return cors(NextResponse.json({ success: true }))
       }
 
       // GET moderation logs / cases
