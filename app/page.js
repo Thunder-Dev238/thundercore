@@ -21,21 +21,8 @@ export default function LandingPage() {
   const router = useRouter()
 
   useEffect(() => {
-    if (session) router.push('/dashboard')
-  }, [session, router])
-
-  if (status === 'loading') {
-    return (
-      <div className="min-h-screen flex items-center justify-center animated-gradient">
-        <div className="text-center">
-          <div className="w-20 h-20 rounded-full mx-auto mb-4 animate-pulse" style={{animation: 'pulse-glow 2s infinite'}}>
-            <img src="/thundercore-logo.jpg" alt="ThunderCore" className="w-20 h-20 rounded-full" />
-          </div>
-          <p className="text-muted-foreground">Loading...</p>
-        </div>
-      </div>
-    )
-  }
+    if (status === 'authenticated' && session) router.push('/dashboard')
+  }, [session, status, router])
 
   return (
     <div className="min-h-screen animated-gradient">
