@@ -45,8 +45,13 @@ const DEFAULT_GUILD_SETTINGS = {
     blockSpam: false, logViolations: true,
   },
   aiMod: {
-    enabled: false, toxicityThreshold: 0.8, detectLinks: false,
-    detectSpam: true, punishment: 'warn', logChannel: null,
+    enabled: false, toxicityThreshold: 0.8,
+    detectAbuse: false,
+    detectThreats: false,
+    detectSpam: true,
+    detectDrugs: false,
+    detectLinks: false,
+    punishment: 'warn', logChannel: null,
   },
   raidMode: {
     enabled: false, autoEnable: true, joinThreshold: 10,
@@ -54,6 +59,11 @@ const DEFAULT_GUILD_SETTINGS = {
   },
   appeals: {
     enabled: false, channel: null, cooldown: 86400000,
+    questions: [
+      'What was the reason for your punishment?',
+      'Why should your punishment be revoked?',
+      'What will you do differently if unbanned?',
+    ],
   },
   prefix: 't!',
   security: { whitelist: [], trusted: [] },

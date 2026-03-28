@@ -841,7 +841,7 @@ export default function GuildDashboard() {
                       <CardTitle className="text-white flex items-center gap-2">
                         <Brain className="w-5 h-5 text-red-500" /> AI Moderation
                       </CardTitle>
-                      <CardDescription>AI-powered content filtering and analysis</CardDescription>
+                      <CardDescription>AI-powered content filtering and analysis — <code className="text-red-400">t!aimod enable</code></CardDescription>
                     </div>
                     <Switch checked={aiMod.enabled || false} onCheckedChange={(v) => updateAiMod('enabled', v)} />
                   </div>
@@ -862,52 +862,90 @@ export default function GuildDashboard() {
                     </div>
                   </div>
 
+                  <Separator className="bg-white/5" />
+                  <h3 className="text-white font-semibold">Detection Modules</h3>
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="flex items-center justify-between p-4 rounded-lg bg-white/5">
-                      <div>
-                        <p className="text-sm font-medium text-white">Detect Spam</p>
-                        <p className="text-xs text-muted-foreground">AI spam detection</p>
+                    {[
+                      { key: 'detectAbuse', label: 'Abuse / Slur Detection', desc: 'EN/HI/ES slur & hate speech detection', cmd: 't!aimod abuse on/off' },
+                      { key: 'detectThreats', label: 'Threat Detection', desc: 'Death threats, doxxing, violence', cmd: 't!aimod threats on/off' },
+                      { key: 'detectSpam', label: 'Spam Detection', desc: 'Caps, flood, emoji spam detection', cmd: 't!aimod spam on/off', defaultOn: true },
+                      { key: 'detectDrugs', label: 'Drug References', desc: 'Drug and substance references', cmd: 't!aimod drugs on/off' },
+                      { key: 'detectLinks', label: 'External Links', desc: 'Malicious & external link detection', cmd: 't!aimod links on/off' },
+                    ].map((item) => (
+                      <div key={item.key} className="flex items-center justify-between p-4 rounded-lg bg-white/5 group">
+                        <div>
+                          <p className="text-sm font-medium text-white">{item.label}</p>
+                          <p className="text-xs text-muted-foreground">{item.desc}</p>
+                          <code className="text-[10px] text-red-400/60 mt-1 block">{item.cmd}</code>
+                        </div>
+                        <Switch
+                          checked={item.defaultOn ? (aiMod[item.key] ?? true) : (aiMod[item.key] || false)}
+                          onCheckedChange={(v) => updateAiMod(item.key, v)}
+                        />
                       </div>
-                      <Switch checked={aiMod.detectSpam ?? true} onCheckedChange={(v) => updateAiMod('detectSpam', v)} />
+                    ))}
+                  </div>
+
+                  <Separator className="bg-white/5" />
+                  <h3 className="text-white font-semibold">Punishment & Logging</h3>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <Label className="text-white">AI Punishment</Label>
+                      <p className="text-xs text-muted-foreground"><code className="text-red-400/60">t!aimod punish [action]</code></p>
+                      <Select value={aiMod.punishment || 'warn'} onValueChange={(v) => updateAiMod('punishment', v)}>
+                        <SelectTrigger className="bg-white/5 border-white/10 text-white">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-[#1a1a2e] border-white/10">
+                          <SelectItem value="delete">Delete Message</SelectItem>
+                          <SelectItem value="warn">Warn User</SelectItem>
+                          <SelectItem value="timeout">Timeout User</SelectItem>
+                          <SelectItem value="kick">Kick User</SelectItem>
+                          <SelectItem value="ban">Ban User</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
-                    <div className="flex items-center justify-between p-4 rounded-lg bg-white/5">
-                      <div>
-                        <p className="text-sm font-medium text-white">Detect Links</p>
-                        <p className="text-xs text-muted-foreground">AI link analysis</p>
-                      </div>
-                      <Switch checked={aiMod.detectLinks || false} onCheckedChange={(v) => updateAiMod('detectLinks', v)} />
+
+                    <div className="space-y-2">
+                      <Label className="text-white">Log Channel</Label>
+                      <p className="text-xs text-muted-foreground"><code className="text-red-400/60">t!aimod logs #channel</code></p>
+                      <Select value={aiMod.logChannel || 'none'} onValueChange={(v) => updateAiMod('logChannel', v === 'none' ? null : v)}>
+                        <SelectTrigger className="bg-white/5 border-white/10 text-white">
+                          <SelectValue placeholder="Select channel" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-[#1a1a2e] border-white/10">
+                          <SelectItem value="none">None</SelectItem>
+                          {channels.map(c => (
+                            <SelectItem key={c.id} value={c.id}>#{c.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label className="text-white">AI Punishment</Label>
-                    <Select value={aiMod.punishment || 'warn'} onValueChange={(v) => updateAiMod('punishment', v)}>
-                      <SelectTrigger className="bg-white/5 border-white/10 text-white w-64">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="bg-[#1a1a2e] border-white/10">
-                        <SelectItem value="delete">Delete Message</SelectItem>
-                        <SelectItem value="warn">Warn User</SelectItem>
-                        <SelectItem value="timeout">Timeout User</SelectItem>
-                        <SelectItem value="kick">Kick User</SelectItem>
-                        <SelectItem value="ban">Ban User</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label className="text-white">Log Channel</Label>
-                    <Select value={aiMod.logChannel || 'none'} onValueChange={(v) => updateAiMod('logChannel', v === 'none' ? null : v)}>
-                      <SelectTrigger className="bg-white/5 border-white/10 text-white w-64">
-                        <SelectValue placeholder="Select channel" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-[#1a1a2e] border-white/10">
-                        <SelectItem value="none">None</SelectItem>
-                        {channels.map(c => (
-                          <SelectItem key={c.id} value={c.id}>#{c.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                  {/* AI Mod Status Summary */}
+                  <div className="p-4 rounded-lg bg-gradient-to-r from-red-500/5 to-amber-500/5 border border-white/5">
+                    <p className="text-xs text-muted-foreground mb-2"><code className="text-red-400/60">t!aimod status</code> — Current AI Mod Status:</p>
+                    <div className="flex flex-wrap gap-2">
+                      {[
+                        { key: 'enabled', label: 'AI Mod' },
+                        { key: 'detectAbuse', label: 'Abuse' },
+                        { key: 'detectThreats', label: 'Threats' },
+                        { key: 'detectSpam', label: 'Spam' },
+                        { key: 'detectDrugs', label: 'Drugs' },
+                        { key: 'detectLinks', label: 'Links' },
+                      ].map((item) => (
+                        <Badge key={item.key} className={
+                          (item.key === 'detectSpam' ? (aiMod[item.key] ?? true) : aiMod[item.key])
+                            ? 'bg-green-500/10 text-green-400 border-green-500/20'
+                            : 'bg-white/5 text-muted-foreground border-white/10'
+                        }>
+                          {(item.key === 'detectSpam' ? (aiMod[item.key] ?? true) : aiMod[item.key]) ? '✓' : '✗'} {item.label}
+                        </Badge>
+                      ))}
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -1077,6 +1115,79 @@ export default function GuildDashboard() {
                 </CardContent>
               </Card>
 
+              {/* Appeal Questions Builder */}
+              <Card className="glass-card border-white/5 border-amber-500/20">
+                <CardHeader>
+                  <CardTitle className="text-white flex items-center gap-2">
+                    <MessageSquare className="w-5 h-5 text-amber-500" /> Appeal Form Questions
+                  </CardTitle>
+                  <CardDescription>Customize the questions users must answer when submitting an appeal</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {(appealsConfig.questions || [
+                    'What was the reason for your punishment?',
+                    'Why should your punishment be revoked?',
+                    'What will you do differently if unbanned?',
+                  ]).map((question, idx) => (
+                    <div key={idx} className="flex items-start gap-3 group">
+                      <div className="flex items-center justify-center w-8 h-8 rounded-full bg-amber-500/10 text-amber-400 text-sm font-bold flex-shrink-0 mt-1">
+                        {idx + 1}
+                      </div>
+                      <div className="flex-1">
+                        <Input
+                          value={question}
+                          onChange={(e) => {
+                            const questions = [...(appealsConfig.questions || [
+                              'What was the reason for your punishment?',
+                              'Why should your punishment be revoked?',
+                              'What will you do differently if unbanned?',
+                            ])]
+                            questions[idx] = e.target.value
+                            updateAppealsConfig('questions', questions)
+                          }}
+                          className="bg-white/5 border-white/10 text-white"
+                          placeholder="Enter question..."
+                        />
+                      </div>
+                      <Button
+                        variant="ghost" size="sm"
+                        className="text-red-400 hover:bg-red-500/10 flex-shrink-0 mt-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={() => {
+                          const questions = [...(appealsConfig.questions || [
+                            'What was the reason for your punishment?',
+                            'Why should your punishment be revoked?',
+                            'What will you do differently if unbanned?',
+                          ])]
+                          questions.splice(idx, 1)
+                          updateAppealsConfig('questions', questions)
+                        }}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  ))}
+                  <Button
+                    variant="outline" size="sm"
+                    className="border-amber-500/30 text-amber-400 hover:bg-amber-500/10"
+                    onClick={() => {
+                      const questions = [...(appealsConfig.questions || [
+                        'What was the reason for your punishment?',
+                        'Why should your punishment be revoked?',
+                        'What will you do differently if unbanned?',
+                      ])]
+                      questions.push('')
+                      updateAppealsConfig('questions', questions)
+                    }}
+                  >
+                    <Plus className="w-4 h-4 mr-2" /> Add Question
+                  </Button>
+                  <p className="text-xs text-muted-foreground">
+                    These questions will appear in the appeal form when users submit an appeal via <code className="text-red-400">t!appeal</code> or the appeal panel.
+                  </p>
+                </CardContent>
+              </Card>
+
+              {/* Appeal Submissions */}
               <Card className="glass-card border-white/5">
                 <CardHeader>
                   <CardTitle className="text-white">Appeal Submissions</CardTitle>
@@ -1119,7 +1230,10 @@ export default function GuildDashboard() {
                       ))}
                     </div>
                   ) : (
-                    <p className="text-muted-foreground text-sm">No appeals submitted yet.</p>
+                    <div className="text-center py-8">
+                      <ScrollText className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
+                      <p className="text-muted-foreground text-sm">No appeals submitted yet.</p>
+                    </div>
                   )}
                 </CardContent>
               </Card>
