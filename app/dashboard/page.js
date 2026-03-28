@@ -123,18 +123,8 @@ export default function DashboardPage() {
             {guilds.map((guild) => (
               <Card
                 key={guild.id}
-                className={`glass-card border-white/5 transition-all duration-300 cursor-pointer group ${
-                  guild.botPresent
-                    ? 'hover:border-red-500/30 hover:-translate-y-1 hover:neon-glow'
-                    : 'hover:border-amber-500/20 opacity-80'
-                }`}
-                onClick={() => {
-                  if (guild.botPresent) {
-                    router.push(`/dashboard/${guild.id}`)
-                  } else {
-                    window.open(`https://discord.com/api/oauth2/authorize?client_id=1485172418128510987&permissions=1099780071614&scope=bot%20applications.commands&guild_id=${guild.id}`, '_blank')
-                  }
-                }}
+                className={`glass-card border-white/5 transition-all duration-300 cursor-pointer group hover:border-red-500/30 hover:-translate-y-1 hover:neon-glow`}
+                onClick={() => router.push(`/dashboard/${guild.id}`)}
               >
                 <CardContent className="p-5">
                   <div className="flex items-center gap-4">
@@ -161,17 +151,13 @@ export default function DashboardPage() {
                           </Badge>
                         ) : (
                           <Badge className="bg-amber-500/10 text-amber-400 border-amber-500/20 text-xs">
-                            <Bot className="w-3 h-3 mr-1" /> Invite Bot
+                            <Bot className="w-3 h-3 mr-1" /> Setup
                           </Badge>
                         )}
                       </div>
                     </div>
                     <div className="text-muted-foreground group-hover:text-red-400 transition-colors">
-                      {guild.botPresent ? (
-                        <Shield className="w-5 h-5" />
-                      ) : (
-                        <ExternalLink className="w-5 h-5" />
-                      )}
+                      <Shield className="w-5 h-5" />
                     </div>
                   </div>
                 </CardContent>

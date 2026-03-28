@@ -173,17 +173,32 @@ async function handleRoute(request, { params }) {
       // Filter guilds where user has MANAGE_GUILD permission
       const manageableGuilds = guilds.filter(g => (parseInt(g.permissions) & 0x20) === 0x20 || (parseInt(g.permissions) & 0x8) === 0x8)
 
-      // Check which guilds have the bot
+      const db = await getDb()
+
+      // Check which guilds have the bot - use multiple methods
       const guildsWithBotStatus = await Promise.all(
         manageableGuilds.map(async (guild) => {
-          const botGuild = await discordApi(`/guilds/${guild.id}`, BOT_TOKEN)
+          // Method 1: Check if guild exists in our database (bot was configured here)
+          const dbGuild = await db.collection('guilds').findOne({ guildId: guild.id })
+          
+          // Method 2: Try Discord API with bot token
+          let botApiCheck = false
+          if (BOT_TOKEN) {
+            const botGuild = await discordApi(`/guilds/${guild.id}`, BOT_TOKEN)
+            botApiCheck = !!botGuild
+          }
+
+          // Bot is present if either check passes
+          const botPresent = botApiCheck || !!dbGuild
+
           return {
             id: guild.id,
             name: guild.name,
             icon: guild.icon,
             owner: guild.owner,
             permissions: guild.permissions,
-            botPresent: !!botGuild,
+            botPresent,
+            configured: !!dbGuild,
           }
         })
       )
