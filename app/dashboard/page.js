@@ -132,7 +132,7 @@ export default function DashboardPage() {
                   if (guild.botPresent) {
                     router.push(`/dashboard/${guild.id}`)
                   } else {
-                    window.open(`https://discord.com/api/oauth2/authorize?client_id=1485172418128510987&permissions=8&scope=bot%20applications.commands&guild_id=${guild.id}`, '_blank')
+                    window.open(`https://discord.com/api/oauth2/authorize?client_id=1485172418128510987&permissions=1099780071614&scope=bot%20applications.commands&guild_id=${guild.id}`, '_blank')
                   }
                 }}
               >

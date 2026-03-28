@@ -37,7 +37,7 @@ export default function LandingPage() {
           </div>
           <div className="flex items-center gap-4">
             <a
-              href={`https://discord.com/api/oauth2/authorize?client_id=1485172418128510987&permissions=8&scope=bot%20applications.commands`}
+              href={`https://discord.com/api/oauth2/authorize?client_id=1485172418128510987&permissions=1099780071614&scope=bot%20applications.commands`}
               target="_blank"
               rel="noopener noreferrer"
             >
@@ -89,7 +89,7 @@ export default function LandingPage() {
               Open Dashboard <ArrowRight className="w-5 h-5 ml-2" />
             </Button>
             <a
-              href={`https://discord.com/api/oauth2/authorize?client_id=1485172418128510987&permissions=8&scope=bot%20applications.commands`}
+              href={`https://discord.com/api/oauth2/authorize?client_id=1485172418128510987&permissions=1099780071614&scope=bot%20applications.commands`}
               target="_blank"
               rel="noopener noreferrer"
             >
